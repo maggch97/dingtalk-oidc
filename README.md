@@ -3,7 +3,7 @@
 This service provides a minimal OpenID Connect layer in front of DingTalk. It performs the standard Authorization Code flow (browser redirect -> DingTalk -> callback -> OIDC code -> token) and issues an ID Token containing basic DingTalk user info. A UserInfo endpoint is now available.
 
 ## Features
-- Standard OIDC Authorization Code flow (no custom `dt_code` param needed by client).
+- Standard OIDC Authorization Code flow.
 - `/authorize` starts flow and redirects user to DingTalk.
 - `/dingtalk/callback` (internal) receives DingTalk `code` and creates OIDC authorization code.
 - `/token` exchanges OIDC authorization code for ID Token (reused as access token).
@@ -195,7 +195,6 @@ Force manual: create and push your own `vX.Y.Z` tag (workflow will ignore since 
 - (DONE) Add `/userinfo` endpoint.
 - Support Refresh Tokens.
 - Multi-client registration + dynamic client metadata.
-- Optional login UI if dt_code not supplied.
 - Structured logging & metrics.
 
 ---
