@@ -24,7 +24,7 @@ This service provides a minimal OpenID Connect layer in front of DingTalk. It pe
 | `DINGTALK_CLIENT_ID` | DingTalk App Key. |
 | `DINGTALK_CLIENT_SECRET` | DingTalk App Secret. |
 | `ADDRESS` | (Optional) Listen address, default `:8086`. |
-| `ALLOWED_REDIRECT_URLS` | (Optional) Comma-separated list of allowed redirect URLs for security. If not set, all valid URLs are accepted. Example: `http://localhost:3000/callback,https://app.example.com/auth/callback` |
+| `ALLOWED_REDIRECT_URLS` | Comma-separated list of allowed redirect URLs. Example: `http://localhost:3000/callback,https://app.example.com/auth/callback` |
 | `CLAIMS_TRANSFORM_SCRIPT` | (Optional) Path to JavaScript file to transform claims before signing the ID token. Must define a `transform(claims)` function that returns modified claims. See [Claims Transformation](#claims-transformation) section. |
 
 ## Claims Transformation

@@ -43,15 +43,20 @@ func NewServer() (*Server, error) {
 		return nil, ErrConfigMissing
 	}
 
-	// Parse allowed redirect URLs from comma-separated env var
+	// Parse allowed redirect URLs from comma-separated env var (required)
+	allowedURLsEnv := os.Getenv("ALLOWED_REDIRECT_URLS")
+	if allowedURLsEnv == "" {
+		return nil, &ConfigError{"missing required env ALLOWED_REDIRECT_URLS"}
+	}
 	var allowedRedirectURLs []string
-	if allowedURLsEnv := os.Getenv("ALLOWED_REDIRECT_URLS"); allowedURLsEnv != "" {
-		for _, u := range strings.Split(allowedURLsEnv, ",") {
-			trimmed := strings.TrimSpace(u)
-			if trimmed != "" {
-				allowedRedirectURLs = append(allowedRedirectURLs, trimmed)
-			}
+	for _, u := range strings.Split(allowedURLsEnv, ",") {
+		trimmed := strings.TrimSpace(u)
+		if trimmed != "" {
+			allowedRedirectURLs = append(allowedRedirectURLs, trimmed)
 		}
+	}
+	if len(allowedRedirectURLs) == 0 {
+		return nil, &ConfigError{"ALLOWED_REDIRECT_URLS must contain at least one URL"}
 	}
 
 	// Read claims transform script from file path specified in env var
@@ -80,7 +85,7 @@ func NewServer() (*Server, error) {
 	}, nil
 }
 
-var ErrConfigMissing = &ConfigError{"missing required env (ISSUER, DINGTALK_CLIENT_ID, DINGTALK_CLIENT_SECRET)"}
+var ErrConfigMissing = &ConfigError{"missing required env (ISSUER, DINGTALK_CLIENT_ID, DINGTALK_CLIENT_SECRET, ALLOWED_REDIRECT_URLS)"}
 
 type ConfigError struct{ Msg string }
 
@@ -144,19 +149,17 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate redirect_uri against allowed list if configured
-	if len(s.AllowedRedirectURLs) > 0 {
-		allowed := false
-		for _, allowedURL := range s.AllowedRedirectURLs {
-			if redirectURI == allowedURL {
-				allowed = true
-				break
-			}
+	// Validate redirect_uri against allowed list
+	allowed := false
+	for _, allowedURL := range s.AllowedRedirectURLs {
+		if redirectURI == allowedURL {
+			allowed = true
+			break
 		}
-		if !allowed {
-			http.Error(w, "redirect_uri_not_allowed", http.StatusBadRequest)
-			return
-		}
+	}
+	if !allowed {
+		http.Error(w, "redirect_uri_not_allowed", http.StatusBadRequest)
+		return
 	}
 
 	if q.Get("response_type") != "code" {
