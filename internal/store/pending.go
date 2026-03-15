@@ -24,13 +24,15 @@ type PendingStore struct {
 func NewPendingStore() *PendingStore { return &PendingStore{data: make(map[string]PendingAuth)} }
 
 // Create stores and returns an internal state key.
-func (s *PendingStore) Create(p PendingAuth) string {
-	// Use 24 bytes -> 32 char approx after base64url (actually 32 bytes -> 43 chars; choose 24 for shorter state ~32 chars)
-	key := secureRandomString(24)
+func (s *PendingStore) Create(p PendingAuth) (string, error) {
+	key, err := secureRandomString(24)
+	if err != nil {
+		return "", err
+	}
 	s.mu.Lock()
 	s.data[key] = p
 	s.mu.Unlock()
-	return key
+	return key, nil
 }
 
 // Consume returns and removes an entry.

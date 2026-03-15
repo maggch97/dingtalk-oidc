@@ -169,7 +169,7 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 	clientState := q.Get("state")
 	nonce := q.Get("nonce")
-	internal := s.Pending.Create(store.PendingAuth{
+	internal, err := s.Pending.Create(store.PendingAuth{
 		ClientID:      clientID,
 		RedirectURI:   redirectURI,
 		OriginalState: clientState,
@@ -177,6 +177,11 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		Scope:         q.Get("scope"),
 		CreatedAt:     time.Now(),
 	})
+	if err != nil {
+		log.Printf("failed to create pending state: %v", err)
+		http.Error(w, "server_error", http.StatusInternalServerError)
+		return
+	}
 	callback := strings.TrimSuffix(s.Issuer, "/") + "/dingtalk/callback"
 	authURL := "https://login.dingtalk.com/oauth2/auth?client_id=" + url.QueryEscape(s.ClientID) +
 		"&redirect_uri=" + url.QueryEscape(callback) +
@@ -206,7 +211,12 @@ func (s *Server) handleDingTalkCallback(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "dingtalk_error", http.StatusBadGateway)
 		return
 	}
-	oidcCode := s.AuthCodes.Create(store.AuthCodeData{UserSub: user.UnionID, User: user, ClientID: pending.ClientID, Nonce: pending.Nonce, Expiry: time.Now().Add(5 * time.Minute)})
+	oidcCode, err := s.AuthCodes.Create(store.AuthCodeData{UserSub: user.UnionID, User: user, ClientID: pending.ClientID, Nonce: pending.Nonce, Expiry: time.Now().Add(5 * time.Minute)})
+	if err != nil {
+		log.Printf("failed to create auth code: %v", err)
+		http.Error(w, "server_error", http.StatusInternalServerError)
+		return
+	}
 	sep := "?"
 	if strings.Contains(pending.RedirectURI, "?") {
 		sep = "&"

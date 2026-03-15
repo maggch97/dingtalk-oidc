@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -28,12 +29,15 @@ func NewAuthCodeStore() *AuthCodeStore {
 }
 
 // Create stores a new auth code and returns the code.
-func (s *AuthCodeStore) Create(d AuthCodeData) string {
-	code := secureRandomString(32) // 32 bytes -> 43 char URL-safe
+func (s *AuthCodeStore) Create(d AuthCodeData) (string, error) {
+	code, err := secureRandomString(32) // 32 bytes -> 43 char URL-safe
+	if err != nil {
+		return "", err
+	}
 	s.mu.Lock()
 	s.data[code] = d
 	s.mu.Unlock()
-	return code
+	return code, nil
 }
 
 // Consume returns and deletes the code if valid.
@@ -65,12 +69,11 @@ func (s *AuthCodeStore) Cleanup() {
 // secureRandomString returns a base64url (no padding) encoded string of n bytes of
 // cryptographically secure randomness. n is the number of raw bytes (after decoding
 // length will be ~4/3*n). We trim padding for URL safety per RFC 4648 §5.
-func secureRandomString(n int) string {
+func secureRandomString(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := io.ReadFull(rand.Reader, b); err != nil {
-		// In the unlikely event of failure, fall back to time-based seedless empty code.
-		return ""
+		return "", fmt.Errorf("crypto/rand failed: %w", err)
 	}
 	// Use RawURLEncoding to avoid '+' '/' '=' characters.
-	return base64.RawURLEncoding.EncodeToString(b)
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
