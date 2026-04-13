@@ -16,7 +16,9 @@ type AuthCodeData struct {
 	User     any // full user object (dingtalk.User) for claims
 	ClientID string
 	Nonce    string
-	Expiry   time.Time
+	// RedirectURI is the original OIDC client redirect_uri from /authorize.
+	RedirectURI string
+	Expiry      time.Time
 }
 
 type AuthCodeStore struct {

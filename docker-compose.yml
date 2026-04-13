@@ -14,14 +14,15 @@ services:
       # Required: Comma-separated list of allowed redirect URLs
       ALLOWED_REDIRECT_URLS: "http://localhost:3000/callback,http://localhost:8080/callback"
       # Optional: Path to JavaScript file to transform claims before signing the ID token
-      # The script should define a transform(claims) function that returns modified claims
+      # The script should define a transform(claims, context) function that returns modified claims
+      # context.redirect_uri contains the original OIDC client redirect_uri
       # If not set, claims will be used as-is without transformation
       # Example: "/app/config/transform.js"
-      # CLAIMS_TRANSFORM_SCRIPT: "/app/config/transform.js"
+      CLAIMS_TRANSFORM_SCRIPT: "/app/config/transform.js"
       # ADDRESS left default (:8086) inside container
-    # volumes:
-    #   # Mount your custom transform script
-    #   - ./example-transform.js:/app/config/transform.js:ro
+    volumes:
+      # Mount your custom transform script
+      - ./example-transform.js:/app/config/transform.js:ro
     ports:
       - "8086:8086"
     healthcheck:

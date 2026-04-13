@@ -214,7 +214,14 @@ func (s *Server) handleDingTalkCallback(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "dingtalk_error", http.StatusBadGateway)
 		return
 	}
-	oidcCode, err := s.AuthCodes.Create(store.AuthCodeData{UserSub: user.UnionID, User: user, ClientID: pending.ClientID, Nonce: pending.Nonce, Expiry: time.Now().Add(5 * time.Minute)})
+	oidcCode, err := s.AuthCodes.Create(store.AuthCodeData{
+		UserSub:     user.UnionID,
+		User:        user,
+		ClientID:    pending.ClientID,
+		Nonce:       pending.Nonce,
+		RedirectURI: pending.RedirectURI,
+		Expiry:      time.Now().Add(5 * time.Minute),
+	})
 	if err != nil {
 		log.Printf("failed to create auth code: %v", err)
 		http.Error(w, "server_error", http.StatusInternalServerError)
@@ -285,7 +292,10 @@ func (s *Server) handleToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Apply JavaScript transformation to claims if configured
-	transformedClaims, err := s.transformClaims(claims)
+	transformedClaims, err := s.transformClaims(claims, map[string]any{
+		"redirect_uri": acData.RedirectURI,
+		"callback_url": acData.RedirectURI,
+	})
 	if err != nil {
 		log.Printf("claims transform error: %v", err)
 		http.Error(w, "claims_transform_error", http.StatusInternalServerError)
@@ -382,8 +392,8 @@ func writeJSON(w http.ResponseWriter, v any) {
 }
 
 // transformClaims applies JavaScript transformation to claims if script is configured.
-// The JS script should define a function `transform(claims)` that returns modified claims.
-func (s *Server) transformClaims(claims jwt.MapClaims) (jwt.MapClaims, error) {
+// The JS script should define a function `transform(claims, context)` that returns modified claims.
+func (s *Server) transformClaims(claims jwt.MapClaims, context map[string]any) (jwt.MapClaims, error) {
 	if s.ClaimsTransformScript == "" {
 		return claims, nil
 	}
@@ -402,9 +412,15 @@ func (s *Server) transformClaims(claims jwt.MapClaims) (jwt.MapClaims, error) {
 	if err := vm.Set("claims", claimsObj); err != nil {
 		return nil, fmt.Errorf("failed to set claims in VM: %w", err)
 	}
+	if context == nil {
+		context = map[string]any{}
+	}
+	if err := vm.Set("context", context); err != nil {
+		return nil, fmt.Errorf("failed to set context in VM: %w", err)
+	}
 
 	// Execute the script
-	script := s.ClaimsTransformScript + "\ntransform(claims);"
+	script := s.ClaimsTransformScript + "\ntransform(claims, context);"
 	result, err := vm.RunString(script)
 	if err != nil {
 		return nil, fmt.Errorf("script execution failed: %w", err)

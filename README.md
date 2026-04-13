@@ -25,7 +25,7 @@ This service provides a minimal OpenID Connect layer in front of DingTalk. It pe
 | `DINGTALK_CLIENT_SECRET` | DingTalk App Secret. |
 | `ADDRESS` | (Optional) Listen address, default `:8086`. |
 | `ALLOWED_REDIRECT_URLS` | Comma-separated list of allowed redirect URLs. Example: `http://localhost:3000/callback,https://app.example.com/auth/callback` |
-| `CLAIMS_TRANSFORM_SCRIPT` | (Optional) Path to JavaScript file to transform claims before signing the ID token. Must define a `transform(claims)` function that returns modified claims. See [Claims Transformation](#claims-transformation) section. |
+| `CLAIMS_TRANSFORM_SCRIPT` | (Optional) Path to JavaScript file to transform claims before signing the ID token. Must define a `transform(claims, context)` function that returns modified claims. See [Claims Transformation](#claims-transformation) section. |
 
 ## Claims Transformation
 
@@ -37,13 +37,13 @@ You can customize the ID token claims using JavaScript before they are signed. T
 
 ### Usage
 
-1. Create a JavaScript file (e.g., `transform.js`) with a `transform(claims)` function
+1. Create a JavaScript file (e.g., `transform.js`) with a `transform(claims, context)` function
 2. Set the `CLAIMS_TRANSFORM_SCRIPT` environment variable to the file path
 3. Mount the file as a volume when using Docker
 
 **Example transform.js:**
 ```javascript
-function transform(claims) {
+function transform(claims, context) {
     // Add custom fields
     if (claims.email && claims.email.endsWith('@example.com')) {
         claims.groups = ['admin', 'users'];
@@ -54,6 +54,10 @@ function transform(claims) {
     }
     
     claims.organization = 'MyCompany';
+
+    if (context && context.redirect_uri) {
+        claims.redirect_uri = context.redirect_uri;
+    }
     
     // IMPORTANT: Always return the claims object
     return claims;
@@ -96,6 +100,10 @@ The `claims` object passed to your transform function includes:
 - `email_verified` - Email verification status
 - `phone_number` - Mobile number (if available)
 - `phone_number_verified` - Phone verification status
+
+The `context` object passed as the second argument currently includes:
+- `redirect_uri` - Original OIDC client `redirect_uri` from `/authorize`
+- `callback_url` - Alias of `redirect_uri` for compatibility with existing wording
 
 ### Notes
 
